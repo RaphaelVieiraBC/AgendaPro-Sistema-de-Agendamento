@@ -1,0 +1,1085 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AgendaPro — Sistema de Agendamento</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    /* ─── RESET & VARIABLES ──────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0d0f14;
+      --surface:   #151820;
+      --card:      #1c2030;
+      --border:    #2a2f42;
+      --accent:    #f0c040;
+      --accent2:   #e07830;
+      --text:      #e8eaf2;
+      --muted:     #7a7f96;
+      --danger:    #e05050;
+      --success:   #40c88a;
+      --radius:    12px;
+      --font-head: 'Syne', sans-serif;
+      --font-body: 'DM Sans', sans-serif;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: 15px;
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    /* ─── LAYOUT ─────────────────────────────────────────────── */
+    .app { display: flex; min-height: 100vh; }
+
+    /* ─── SIDEBAR ────────────────────────────────────────────── */
+    .sidebar {
+      width: 240px;
+      min-width: 240px;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      padding: 28px 0;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      z-index: 10;
+    }
+
+    .logo {
+      padding: 0 24px 28px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 16px;
+    }
+
+    .logo h1 {
+      font-family: var(--font-head);
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      color: var(--accent);
+    }
+
+    .logo span {
+      display: block;
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      margin-top: 2px;
+    }
+
+    .nav { flex: 1; padding: 8px 12px; }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      border-radius: var(--radius);
+      cursor: pointer;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 500;
+      transition: all .2s;
+      margin-bottom: 4px;
+      border: none;
+      background: none;
+      width: 100%;
+      text-align: left;
+    }
+
+    .nav-item:hover { background: var(--card); color: var(--text); }
+    .nav-item.active { background: var(--accent); color: #0d0f14; font-weight: 700; }
+
+    .nav-item svg { flex-shrink: 0; }
+
+    .api-status {
+      padding: 16px 20px;
+      border-top: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .status-dot {
+      display: inline-block;
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--muted);
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+    .status-dot.ok   { background: var(--success); box-shadow: 0 0 6px var(--success); }
+    .status-dot.err  { background: var(--danger);  box-shadow: 0 0 6px var(--danger); }
+
+    /* ─── MAIN ───────────────────────────────────────────────── */
+    .main { flex: 1; padding: 36px 40px; overflow-y: auto; }
+
+    .page { display: none; animation: fadeIn .3s ease; }
+    .page.active { display: block; }
+
+    @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
+
+    /* ─── PAGE HEADER ────────────────────────────────────────── */
+    .page-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 32px;
+    }
+
+    .page-header h2 {
+      font-family: var(--font-head);
+      font-size: 28px;
+      font-weight: 700;
+    }
+
+    /* ─── CARDS GRID (dashboard) ─────────────────────────────── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    .stat-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+    }
+
+    .stat-card .label {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .stat-card .value {
+      font-family: var(--font-head);
+      font-size: 36px;
+      font-weight: 800;
+      color: var(--accent);
+    }
+
+    /* ─── TABLE ──────────────────────────────────────────────── */
+    .table-wrapper {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+
+    table { width: 100%; border-collapse: collapse; }
+
+    thead tr { border-bottom: 1px solid var(--border); }
+
+    th {
+      padding: 14px 18px;
+      text-align: left;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    td {
+      padding: 14px 18px;
+      font-size: 14px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover td { background: rgba(255,255,255,.03); }
+
+    /* ─── BADGES ─────────────────────────────────────────────── */
+    .badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .badge-agendado  { background: rgba(240,192,64,.15);  color: var(--accent); }
+    .badge-cancelado { background: rgba(224,80,80,.15);   color: var(--danger); }
+    .badge-concluido { background: rgba(64,200,138,.15);  color: var(--success); }
+
+    /* ─── BUTTONS ────────────────────────────────────────────── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-family: var(--font-body);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all .2s;
+    }
+
+    .btn-primary { background: var(--accent); color: #0d0f14; }
+    .btn-primary:hover { background: #f5ce5a; transform: translateY(-1px); }
+
+    .btn-danger { background: transparent; border: 1px solid var(--danger); color: var(--danger); padding: 6px 14px; font-size: 13px; }
+    .btn-danger:hover { background: rgba(224,80,80,.1); }
+
+    .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--text); }
+    .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* ─── FORMS ──────────────────────────────────────────────── */
+    .form-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px;
+      max-width: 540px;
+    }
+
+    .form-group { margin-bottom: 20px; }
+
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--muted);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: .8px;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: 14px;
+      transition: border-color .2s;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    select option { background: var(--surface); }
+
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+    /* ─── TOAST ──────────────────────────────────────────────── */
+    #toast-container {
+      position: fixed;
+      bottom: 28px;
+      right: 28px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .toast {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--accent);
+      border-radius: var(--radius);
+      padding: 14px 20px;
+      font-size: 14px;
+      min-width: 260px;
+      animation: slideIn .3s ease;
+      box-shadow: 0 8px 30px rgba(0,0,0,.4);
+    }
+
+    .toast.error { border-left-color: var(--danger); }
+    .toast.success { border-left-color: var(--success); }
+
+    @keyframes slideIn {
+      from { opacity:0; transform: translateX(20px); }
+      to   { opacity:1; transform: none; }
+    }
+
+    /* ─── MODAL ──────────────────────────────────────────────── */
+    .modal-backdrop {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.7);
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: fadeIn .2s ease;
+    }
+
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 32px;
+      width: 100%;
+      max-width: 480px;
+    }
+
+    .modal h3 {
+      font-family: var(--font-head);
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 20px;
+    }
+
+    .modal-footer {
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+      margin-top: 24px;
+    }
+
+    /* ─── EMPTY STATE ────────────────────────────────────────── */
+    .empty {
+      text-align: center;
+      padding: 48px 24px;
+      color: var(--muted);
+    }
+
+    .empty svg { opacity: .3; margin-bottom: 12px; }
+    .empty p { font-size: 15px; }
+
+    /* ─── LOADING ────────────────────────────────────────────── */
+    .loading {
+      display: inline-block;
+      width: 18px; height: 18px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ─── AGENDA CALENDAR ────────────────────────────────────── */
+    .calendar-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .calendar-header h3 {
+      font-family: var(--font-head);
+      font-size: 20px;
+      font-weight: 700;
+      flex: 1;
+    }
+
+    .cal-nav {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 6px 14px;
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: 13px;
+      cursor: pointer;
+      transition: all .2s;
+    }
+
+    .cal-nav:hover { border-color: var(--accent); color: var(--accent); }
+
+    .agenda-list { display: flex; flex-direction: column; gap: 12px; }
+
+    .agenda-slot {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      transition: border-color .2s;
+    }
+
+    .agenda-slot:hover { border-color: var(--accent); }
+
+    .slot-time {
+      font-family: var(--font-head);
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--accent);
+      min-width: 70px;
+    }
+
+    .slot-info { flex: 1; }
+    .slot-client { font-weight: 600; font-size: 15px; }
+    .slot-service { font-size: 13px; color: var(--muted); margin-top: 2px; }
+
+    /* ─── RESPONSIVE ─────────────────────────────────────────── */
+    @media (max-width: 768px) {
+      .sidebar { display: none; }
+      .main { padding: 20px; }
+      .stats-grid { grid-template-columns: 1fr 1fr; }
+      .form-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ═══ SIDEBAR ═══════════════════════════════════════════ -->
+  <aside class="sidebar">
+    <div class="logo">
+      <h1>AgendaPro</h1>
+      <span>Sistema de Agendamento</span>
+    </div>
+
+    <nav class="nav">
+      <button class="nav-item active" onclick="showPage('dashboard')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        Dashboard
+      </button>
+      <button class="nav-item" onclick="showPage('agenda')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        Agenda
+      </button>
+      <button class="nav-item" onclick="showPage('agendamentos')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+        Agendamentos
+      </button>
+      <button class="nav-item" onclick="showPage('novo-agendamento')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+        Novo Agendamento
+      </button>
+      <button class="nav-item" onclick="showPage('clientes')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+        Clientes
+      </button>
+      <button class="nav-item" onclick="showPage('servicos')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        Serviços
+      </button>
+    </nav>
+
+    <div class="api-status">
+      <span class="status-dot" id="status-dot"></span>
+      <span id="status-text">Verificando API...</span>
+    </div>
+  </aside>
+
+  <!-- ═══ MAIN CONTENT ═════════════════════════════════════ -->
+  <main class="main">
+
+    <!-- ── DASHBOARD ─────────────────────────────────── -->
+    <section class="page active" id="page-dashboard">
+      <div class="page-header">
+        <h2>Dashboard</h2>
+        <button class="btn btn-ghost" onclick="loadDashboard()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+          Atualizar
+        </button>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="label">Agendamentos Hoje</div>
+          <div class="value" id="stat-hoje">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">Total de Clientes</div>
+          <div class="value" id="stat-clientes">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">Serviços Cadastrados</div>
+          <div class="value" id="stat-servicos">—</div>
+        </div>
+      </div>
+
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>Cliente</th>
+              <th>Serviço</th>
+              <th>Data / Hora</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="dashboard-table-body">
+            <tr><td colspan="4"><div class="loading"></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ── AGENDA ─────────────────────────────────────── -->
+    <section class="page" id="page-agenda">
+      <div class="page-header">
+        <h2>Agenda</h2>
+      </div>
+
+      <div class="calendar-header">
+        <button class="cal-nav" id="btn-prev-day" onclick="changeDay(-1)">← Anterior</button>
+        <h3 id="agenda-date-title">—</h3>
+        <button class="cal-nav" id="btn-next-day" onclick="changeDay(1)">Próximo →</button>
+      </div>
+
+      <div class="agenda-list" id="agenda-list">
+        <div class="empty"><p>Carregando agenda...</p></div>
+      </div>
+    </section>
+
+    <!-- ── AGENDAMENTOS ───────────────────────────────── -->
+    <section class="page" id="page-agendamentos">
+      <div class="page-header">
+        <h2>Todos os Agendamentos</h2>
+        <button class="btn btn-primary" onclick="showPage('novo-agendamento')">+ Novo</button>
+      </div>
+
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Cliente</th>
+              <th>Serviço</th>
+              <th>Data / Hora</th>
+              <th>Status</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="agendamentos-table-body">
+            <tr><td colspan="6" style="text-align:center;padding:32px"><div class="loading"></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ── NOVO AGENDAMENTO ───────────────────────────── -->
+    <section class="page" id="page-novo-agendamento">
+      <div class="page-header">
+        <h2>Novo Agendamento</h2>
+      </div>
+
+      <div class="form-card">
+        <form id="form-agendamento" onsubmit="submitAgendamento(event)">
+          <div class="form-group">
+            <label>Cliente</label>
+            <select id="ag-cliente" required>
+              <option value="">Selecione um cliente...</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Serviço</label>
+            <select id="ag-servico" required>
+              <option value="">Selecione um serviço...</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Data</label>
+              <input type="date" id="ag-data" required />
+            </div>
+            <div class="form-group">
+              <label>Hora</label>
+              <input type="time" id="ag-hora" required />
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Observações</label>
+            <textarea id="ag-obs" rows="3" placeholder="Observações opcionais..."></textarea>
+          </div>
+          <button type="submit" class="btn btn-primary" style="width:100%">
+            Confirmar Agendamento
+          </button>
+        </form>
+      </div>
+    </section>
+
+    <!-- ── CLIENTES ───────────────────────────────────── -->
+    <section class="page" id="page-clientes">
+      <div class="page-header">
+        <h2>Clientes</h2>
+        <button class="btn btn-primary" onclick="openModalCliente()">+ Novo Cliente</button>
+      </div>
+
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>Nome</th>
+              <th>Telefone</th>
+              <th>Email</th>
+              <th>Cadastrado em</th>
+            </tr>
+          </thead>
+          <tbody id="clientes-table-body">
+            <tr><td colspan="4" style="text-align:center;padding:32px"><div class="loading"></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ── SERVIÇOS ───────────────────────────────────── -->
+    <section class="page" id="page-servicos">
+      <div class="page-header">
+        <h2>Serviços</h2>
+        <button class="btn btn-primary" onclick="openModalServico()">+ Novo Serviço</button>
+      </div>
+
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>Nome</th>
+              <th>Duração (min)</th>
+              <th>Preço</th>
+              <th>Descrição</th>
+            </tr>
+          </thead>
+          <tbody id="servicos-table-body">
+            <tr><td colspan="4" style="text-align:center;padding:32px"><div class="loading"></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ═══ MODAL CLIENTE ════════════════════════════════════════ -->
+<div id="modal-cliente" style="display:none">
+  <div class="modal-backdrop" onclick="closeModal('modal-cliente')">
+    <div class="modal" onclick="event.stopPropagation()">
+      <h3>Cadastrar Cliente</h3>
+      <form id="form-cliente" onsubmit="submitCliente(event)">
+        <div class="form-group">
+          <label>Nome Completo</label>
+          <input type="text" id="cli-nome" required placeholder="Nome do cliente" />
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Telefone</label>
+            <input type="tel" id="cli-telefone" placeholder="(11) 99999-9999" />
+          </div>
+          <div class="form-group">
+            <label>Email</label>
+            <input type="email" id="cli-email" placeholder="email@exemplo.com" />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" onclick="closeModal('modal-cliente')">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL SERVIÇO ════════════════════════════════════════ -->
+<div id="modal-servico" style="display:none">
+  <div class="modal-backdrop" onclick="closeModal('modal-servico')">
+    <div class="modal" onclick="event.stopPropagation()">
+      <h3>Cadastrar Serviço</h3>
+      <form id="form-servico" onsubmit="submitServico(event)">
+        <div class="form-group">
+          <label>Nome do Serviço</label>
+          <input type="text" id="svc-nome" required placeholder="Ex: Corte de Cabelo" />
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Duração (minutos)</label>
+            <input type="number" id="svc-duracao" required min="5" step="5" placeholder="30" />
+          </div>
+          <div class="form-group">
+            <label>Preço (R$)</label>
+            <input type="number" id="svc-preco" required min="0" step="0.01" placeholder="0.00" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Descrição</label>
+          <textarea id="svc-descricao" rows="2" placeholder="Descrição opcional..."></textarea>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" onclick="closeModal('modal-servico')">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL CANCELAR ═══════════════════════════════════════ -->
+<div id="modal-cancelar" style="display:none">
+  <div class="modal-backdrop" onclick="closeModal('modal-cancelar')">
+    <div class="modal" onclick="event.stopPropagation()">
+      <h3>Cancelar Agendamento</h3>
+      <p style="color:var(--muted);margin-bottom:8px">Tem certeza que deseja cancelar este agendamento? Esta ação não pode ser desfeita.</p>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="closeModal('modal-cancelar')">Voltar</button>
+        <button class="btn btn-danger" id="btn-confirmar-cancelar" onclick="confirmarCancelamento()">Sim, cancelar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ TOAST ════════════════════════════════════════════════ -->
+<div id="toast-container"></div>
+
+<!-- ═══ JAVASCRIPT ════════════════════════════════════════════ -->
+<script>
+  /* ─── CONFIG ─────────────────────────────────────────────── */
+  // 🔧 ALTERE AQUI para apontar para sua API FastAPI
+  const API_BASE = 'http://localhost:5550';
+
+  /* ─── ESTADO ─────────────────────────────────────────────── */
+  let currentPage   = 'dashboard';
+  let currentDay    = new Date();
+  let pendingCancelId = null;
+
+  /* ─── NAVEGAÇÃO ──────────────────────────────────────────── */
+  function showPage(id) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+
+    document.getElementById(`page-${id}`).classList.add('active');
+    document.querySelectorAll('.nav-item').forEach(n => {
+      if (n.getAttribute('onclick')?.includes(id)) n.classList.add('active');
+    });
+
+    currentPage = id;
+
+    if (id === 'dashboard')       loadDashboard();
+    if (id === 'agenda')          loadAgenda();
+    if (id === 'agendamentos')    loadAgendamentos();
+    if (id === 'clientes')        loadClientes();
+    if (id === 'servicos')        loadServicos();
+    if (id === 'novo-agendamento') loadFormAgendamento();
+  }
+
+  /* ─── API HELPERS ────────────────────────────────────────── */
+  async function apiFetch(path, opts = {}) {
+    const res = await fetch(`${API_BASE}${path}`, {
+      headers: { 'Content-Type': 'application/json', ...opts.headers },
+      ...opts,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(err.detail || 'Erro na API');
+    }
+    return res.json();
+  }
+
+  /* ─── STATUS CHECK ───────────────────────────────────────── */
+  async function checkApiStatus() {
+    const dot  = document.getElementById('status-dot');
+    const text = document.getElementById('status-text');
+    try {
+      await fetch(`${API_BASE}/`);
+      dot.className  = 'status-dot ok';
+      text.textContent = 'API conectada';
+    } catch {
+      dot.className  = 'status-dot err';
+      text.textContent = 'API offline';
+    }
+  }
+
+  /* ─── TOAST ──────────────────────────────────────────────── */
+  function toast(msg, type = 'info') {
+    const el = document.createElement('div');
+    el.className = `toast ${type}`;
+    el.textContent = msg;
+    document.getElementById('toast-container').appendChild(el);
+    setTimeout(() => el.remove(), 4000);
+  }
+
+  /* ─── MODAL ──────────────────────────────────────────────── */
+  function openModal(id)  { document.getElementById(id).style.display = 'block'; }
+  function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+  function openModalCliente() { document.getElementById('form-cliente').reset(); openModal('modal-cliente'); }
+  function openModalServico() { document.getElementById('form-servico').reset(); openModal('modal-servico'); }
+
+  /* ─── FORMAT HELPERS ─────────────────────────────────────── */
+  function formatDT(dt) {
+    if (!dt) return '—';
+    const d = new Date(dt);
+    return d.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+  }
+
+  function formatDate(d) {
+    return d.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  }
+
+  function toISODate(d) {
+    return d.toISOString().split('T')[0];
+  }
+
+  function badgeStatus(s) {
+    const map = { agendado: 'agendado', cancelado: 'cancelado', concluido: 'concluido' };
+    return `<span class="badge badge-${map[s] || 'agendado'}">${s}</span>`;
+  }
+
+  /* ─── DASHBOARD ──────────────────────────────────────────── */
+  async function loadDashboard() {
+    try {
+      const [agendamentos, clientes, servicos] = await Promise.all([
+        apiFetch('/agendamentos'),
+        apiFetch('/clientes'),
+        apiFetch('/servicos'),
+      ]);
+
+      const hoje = toISODate(new Date());
+      const de_hoje = agendamentos.filter(a => a.data_hora?.startsWith(hoje));
+
+      document.getElementById('stat-hoje').textContent     = de_hoje.length;
+      document.getElementById('stat-clientes').textContent = clientes.length;
+      document.getElementById('stat-servicos').textContent = servicos.length;
+
+      // Mostra os 10 mais recentes
+      const tbody = document.getElementById('dashboard-table-body');
+      const recentes = [...agendamentos].reverse().slice(0, 10);
+      if (recentes.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4"><div class="empty"><p>Nenhum agendamento ainda.</p></div></td></tr>`;
+        return;
+      }
+      tbody.innerHTML = recentes.map(a => `
+        <tr>
+          <td>${a.cliente_nome || a.cliente_id}</td>
+          <td>${a.servico_nome || a.servico_id}</td>
+          <td>${formatDT(a.data_hora)}</td>
+          <td>${badgeStatus(a.status)}</td>
+        </tr>
+      `).join('');
+    } catch (e) {
+      toast('Erro ao carregar dashboard: ' + e.message, 'error');
+    }
+  }
+
+  /* ─── AGENDA ─────────────────────────────────────────────── */
+  function changeDay(delta) {
+    currentDay = new Date(currentDay);
+    currentDay.setDate(currentDay.getDate() + delta);
+    loadAgenda();
+  }
+
+  async function loadAgenda() {
+    document.getElementById('agenda-date-title').textContent = formatDate(currentDay);
+    const dateStr = toISODate(currentDay);
+    const list = document.getElementById('agenda-list');
+    list.innerHTML = '<div class="empty"><p>Carregando...</p></div>';
+
+    try {
+      // GET /agendamentos?data=YYYY-MM-DD  — filtra no backend, ou filtra no front:
+      const agendamentos = await apiFetch(`/agendamentos?data=${dateStr}`);
+
+      if (agendamentos.length === 0) {
+        list.innerHTML = `
+          <div class="empty">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            <p>Nenhum agendamento para este dia.</p>
+          </div>`;
+        return;
+      }
+
+      // Ordena por horário
+      agendamentos.sort((a, b) => a.data_hora.localeCompare(b.data_hora));
+
+      list.innerHTML = agendamentos.map(a => {
+        const hora = a.data_hora ? a.data_hora.split('T')[1]?.slice(0,5) || a.data_hora.slice(11,16) : '—';
+        return `
+          <div class="agenda-slot">
+            <div class="slot-time">${hora}</div>
+            <div class="slot-info">
+              <div class="slot-client">${a.cliente_nome || 'Cliente #' + a.cliente_id}</div>
+              <div class="slot-service">${a.servico_nome || 'Serviço #' + a.servico_id}</div>
+            </div>
+            ${badgeStatus(a.status)}
+          </div>`;
+      }).join('');
+    } catch (e) {
+      list.innerHTML = `<div class="empty"><p>Erro ao carregar agenda: ${e.message}</p></div>`;
+    }
+  }
+
+  /* ─── AGENDAMENTOS ───────────────────────────────────────── */
+  async function loadAgendamentos() {
+    const tbody = document.getElementById('agendamentos-table-body');
+    try {
+      const data = await apiFetch('/agendamentos');
+      if (data.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6"><div class="empty"><p>Nenhum agendamento cadastrado.</p></div></td></tr>`;
+        return;
+      }
+      tbody.innerHTML = [...data].reverse().map(a => `
+        <tr>
+          <td style="color:var(--muted)">#${a.id}</td>
+          <td>${a.cliente_nome || a.cliente_id}</td>
+          <td>${a.servico_nome || a.servico_id}</td>
+          <td>${formatDT(a.data_hora)}</td>
+          <td>${badgeStatus(a.status)}</td>
+          <td>
+            ${a.status === 'agendado' ? `<button class="btn btn-danger" onclick="solicitarCancelamento(${a.id})">Cancelar</button>` : '—'}
+          </td>
+        </tr>
+      `).join('');
+    } catch (e) {
+      toast('Erro ao carregar agendamentos: ' + e.message, 'error');
+      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--danger)">Erro ao carregar dados.</td></tr>`;
+    }
+  }
+
+  function solicitarCancelamento(id) {
+    pendingCancelId = id;
+    openModal('modal-cancelar');
+  }
+
+  async function confirmarCancelamento() {
+    if (!pendingCancelId) return;
+    try {
+      await apiFetch(`/agendamentos/${pendingCancelId}/cancelar`, { method: 'PATCH' });
+      toast('Agendamento cancelado.', 'success');
+      closeModal('modal-cancelar');
+      loadAgendamentos();
+    } catch (e) {
+      toast('Erro ao cancelar: ' + e.message, 'error');
+    }
+    pendingCancelId = null;
+  }
+
+  /* ─── NOVO AGENDAMENTO ───────────────────────────────────── */
+  async function loadFormAgendamento() {
+    try {
+      const [clientes, servicos] = await Promise.all([
+        apiFetch('/clientes'),
+        apiFetch('/servicos'),
+      ]);
+
+      const selCli = document.getElementById('ag-cliente');
+      const selSvc = document.getElementById('ag-servico');
+
+      selCli.innerHTML = '<option value="">Selecione um cliente...</option>' +
+        clientes.map(c => `<option value="${c.id}">${c.nome}</option>`).join('');
+
+      selSvc.innerHTML = '<option value="">Selecione um serviço...</option>' +
+        servicos.map(s => `<option value="${s.id}">${s.nome} — R$ ${Number(s.preco).toFixed(2)}</option>`).join('');
+
+      // Default: hoje
+      document.getElementById('ag-data').value = toISODate(new Date());
+    } catch (e) {
+      toast('Erro ao carregar formulário: ' + e.message, 'error');
+    }
+  }
+
+  async function submitAgendamento(e) {
+    e.preventDefault();
+    const data_hora = `${document.getElementById('ag-data').value}T${document.getElementById('ag-hora').value}:00`;
+    const body = {
+      cliente_id:  parseInt(document.getElementById('ag-cliente').value),
+      servico_id:  parseInt(document.getElementById('ag-servico').value),
+      data_hora,
+      observacoes: document.getElementById('ag-obs').value,
+    };
+    try {
+      await apiFetch('/agendamentos', { method: 'POST', body: JSON.stringify(body) });
+      toast('Agendamento criado com sucesso!', 'success');
+      document.getElementById('form-agendamento').reset();
+      showPage('agendamentos');
+    } catch (e) {
+      toast('Erro: ' + e.message, 'error');
+    }
+  }
+
+  /* ─── CLIENTES ───────────────────────────────────────────── */
+  async function loadClientes() {
+    const tbody = document.getElementById('clientes-table-body');
+    try {
+      const data = await apiFetch('/clientes');
+      if (data.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4"><div class="empty"><p>Nenhum cliente cadastrado ainda.</p></div></td></tr>`;
+        return;
+      }
+      tbody.innerHTML = data.map(c => `
+        <tr>
+          <td><strong>${c.nome}</strong></td>
+          <td>${c.telefone || '—'}</td>
+          <td>${c.email || '—'}</td>
+          <td style="color:var(--muted)">${c.criado_em ? new Date(c.criado_em).toLocaleDateString('pt-BR') : '—'}</td>
+        </tr>
+      `).join('');
+    } catch (e) {
+      toast('Erro ao carregar clientes: ' + e.message, 'error');
+    }
+  }
+
+  async function submitCliente(e) {
+    e.preventDefault();
+    const body = {
+      nome:     document.getElementById('cli-nome').value,
+      telefone: document.getElementById('cli-telefone').value,
+      email:    document.getElementById('cli-email').value,
+    };
+    try {
+      await apiFetch('/clientes', { method: 'POST', body: JSON.stringify(body) });
+      toast('Cliente cadastrado!', 'success');
+      closeModal('modal-cliente');
+      loadClientes();
+    } catch (e) {
+      toast('Erro: ' + e.message, 'error');
+    }
+  }
+
+  /* ─── SERVIÇOS ───────────────────────────────────────────── */
+  async function loadServicos() {
+    const tbody = document.getElementById('servicos-table-body');
+    try {
+      const data = await apiFetch('/servicos');
+      if (data.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4"><div class="empty"><p>Nenhum serviço cadastrado.</p></div></td></tr>`;
+        return;
+      }
+      tbody.innerHTML = data.map(s => `
+        <tr>
+          <td><strong>${s.nome}</strong></td>
+          <td>${s.duracao_minutos || '—'}</td>
+          <td>R$ ${Number(s.preco).toFixed(2)}</td>
+          <td style="color:var(--muted)">${s.descricao || '—'}</td>
+        </tr>
+      `).join('');
+    } catch (e) {
+      toast('Erro ao carregar serviços: ' + e.message, 'error');
+    }
+  }
+
+  async function submitServico(e) {
+    e.preventDefault();
+    const body = {
+      nome:              document.getElementById('svc-nome').value,
+      duracao_minutos:   parseInt(document.getElementById('svc-duracao').value),
+      preco:             parseFloat(document.getElementById('svc-preco').value),
+      descricao:         document.getElementById('svc-descricao').value,
+    };
+    try {
+      await apiFetch('/servicos', { method: 'POST', body: JSON.stringify(body) });
+      toast('Serviço cadastrado!', 'success');
+      closeModal('modal-servico');
+      loadServicos();
+    } catch (e) {
+      toast('Erro: ' + e.message, 'error');
+    }
+  }
+
+  /* ─── INIT ───────────────────────────────────────────────── */
+  checkApiStatus();
+  setInterval(checkApiStatus, 15000);
+  loadDashboard();
+</script>
+</body>
+</html>
